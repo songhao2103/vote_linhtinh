@@ -1,0 +1,6 @@
+@VoteLinhTinh_HostAddress = http://localhost:5159
+
+GET {{VoteLinhTinh_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
