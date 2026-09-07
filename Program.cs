@@ -1,3 +1,7 @@
+
+
+using VoteLinhTinh.Models;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -12,6 +16,13 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var initializer = new DatabaseInitializer(configuration);
+    await initializer.InitializeAsync();
 }
 
 app.UseHttpsRedirection();
