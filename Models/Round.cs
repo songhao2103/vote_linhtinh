@@ -2,6 +2,7 @@
 
 public class Round : BaseModel
 {
-    public int TotalMatch { get; set; }
+    public int TotalMatches { get; set; }
     public string Name { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
 }
