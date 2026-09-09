@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using System.Text;
 using VoteLinhTinh.Models;
 
 namespace VoteLinhTinh.Repositories;
@@ -31,16 +32,16 @@ public class SongRepository : BaseRepository, ISongRepository
 
             const string sql = """
                 SELECT
-                    id,
-                    name,
-                    videoUrl,
-                    resourceUrl,
-                    isActive,
-                    createdAt
+                    id as Id,
+                    name as Name,
+                    video_url as VideoUrl,
+                    resource_url as ResourceUrl,
+                    is_active as IsActive,
+                    created_at as CreatedDate
                 FROM songs
                 WHERE (@searchKey IS NULL OR name ILIKE '%' || @searchKey || '%')
-                  AND (@isActive IS NULL OR isActive = @isActive)
-                ORDER BY createdAt DESC
+                  AND (@isActive IS NULL OR is_active = @isActive)
+                ORDER BY created_at DESC
                 LIMIT @pageSize
                 OFFSET @offset
                 """;
@@ -79,12 +80,12 @@ public class SongRepository : BaseRepository, ISongRepository
 
             const string sql = """
                 SELECT
-                    id,
-                    name,
-                    videoUrl,
-                    resourceUrl,
-                    isActive,
-                    createdAt
+                    id as Id,
+                    name as Name,
+                    video_url as VideoUrl,
+                    resource_url as ResourceUrl,
+                    is_active as IsActive,
+                    created_at as CreatedDate
                 FROM songs
                 WHERE id = @id
                 """;
@@ -106,47 +107,69 @@ public class SongRepository : BaseRepository, ISongRepository
 
     public async Task<int> UpsertSongsAsync(List<Song> songs)
     {
+        if (songs == null || songs.Count == 0)
+            return 0;
+
         try
         {
-            if (songs == null || songs.Count == 0)
-                return 0;
-
             using var connection = CreateConnection();
 
-            const string sql = """
-                INSERT INTO songs
-                (
-                    name,
-                    videoUrl,
-                    resourceUrl,
-                    isActive,
-                    createdAt
-                )
-                VALUES
-                (
-                    @Name,
-                    @VideoUrl,
-                    @ResourceUrl,
-                    @IsActive,
-                    @CreatedAt
-                )
-                ON CONFLICT (name, videoUrl)
-                DO UPDATE SET
-                    resourceUrl = EXCLUDED.resourceUrl,
-                    isActive = EXCLUDED.isActive
-                RETURNING id;
-                """;
+            var sqlBuilder = new StringBuilder("""
+            INSERT INTO songs
+            (
+                name,
+                video_url,
+                resource_url,
+                is_active,
+                created_at
+            )
+            VALUES
+            """);
 
-            var result = await connection.QueryAsync<int>(sql, songs);
+            var parameters = new DynamicParameters();
 
-            return result.Count();
+            var values = new List<string>();
+
+            for (int i = 0; i < songs.Count; i++)
+            {
+                var song = songs[i];
+
+                values.Add(
+                    $"(@Name{i}, @VideoUrl{i}, @ResourceUrl{i}, @IsActive{i}, @CreatedDate{i})"
+                );
+
+                parameters.Add($"Name{i}", song.Name);
+                parameters.Add($"VideoUrl{i}", song.VideoUrl);
+                parameters.Add($"ResourceUrl{i}", song.ResourceUrl);
+                parameters.Add($"IsActive{i}", song.IsActive);
+                parameters.Add($"CreatedDate{i}", song.CreatedDate);
+            }
+
+            sqlBuilder.AppendLine(string.Join(",\n", values));
+
+            sqlBuilder.AppendLine("""
+            ON CONFLICT (name, video_url)
+            DO UPDATE SET
+                resource_url = EXCLUDED.resource_url,
+                is_active = EXCLUDED.is_active;
+            """);
+
+            var sql = sqlBuilder.ToString();
+
+            var affectedRows = await connection.ExecuteAsync(
+                sql,
+                parameters
+            );
+
+            return affectedRows;
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
                 "Error while upserting songs. Song count: {SongCount}",
-                songs?.Count ?? 0);
+                songs.Count
+            );
 
             throw;
         }

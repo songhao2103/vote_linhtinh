@@ -21,8 +21,9 @@ public class MatchRepository : BaseRepository, IMatchRepository
             FROM rounds
             WHERE is_active = TRUE
             ORDER BY total_matches ASC
+            LIMIT 1
             """;
-        var currentRoundId = await connection.QueryFirstAsync<int?>(roundActiveSql);
+        var currentRoundId = await connection.QueryFirstOrDefaultAsync<int?>(roundActiveSql);
 
         if(!currentRoundId.HasValue)
         {
@@ -58,7 +59,7 @@ public class MatchRepository : BaseRepository, IMatchRepository
             LIMIT 2
             """;
 
-        var matches = await connection.QueryAsync<MatchDTO>(matchsSql, new { RoundId = currentRoundId.Value });
+        var matches = await connection.QueryAsync<MatchDTO>(matchsSql, new { RoundId = currentRoundId.Value, CurrentMatchId = currentMatchId });
         return matches.ToList();
     }
 
@@ -67,14 +68,14 @@ public class MatchRepository : BaseRepository, IMatchRepository
         using var connection = CreateConnection();
         const string roundSql = """
             SELECT
-                id,
-                total_matches
+                id as Id,
+                total_matches as TotalMatches
             FROM rounds
             WHERE total_matches > (SELECT total_matches FROM rounds WHERE id = @RoundId)
             LIMIT 1
             """;
 
-        var round = await connection.QueryFirstOrDefaultAsync(roundSql, new { RoundId = roundId });
+        var round = await connection.QueryFirstOrDefaultAsync<Models.Round>(roundSql, new { RoundId = roundId });
 
         if (round == null)
         {
@@ -83,11 +84,12 @@ public class MatchRepository : BaseRepository, IMatchRepository
 
         const string songsSql = """
             SELECT
-                s.id,
-                s.name,
-                s.video_url,
-                s.resource_url,
-                s.is_active
+                s.id as Id,
+                s.name as Name,
+                s.video_url as VideoUrl,
+                s.resource_url as ResourceUrl,
+                s.is_active as IsActive,
+                s.created_at as CreatedDate
             FROM matches m
             JOIN songs s ON s.id = m.winner_song_id
             WHERE (m.round_id = @RoundId)
@@ -112,7 +114,7 @@ public class MatchRepository : BaseRepository, IMatchRepository
 
             matches.Add(new Match
             {
-                RoundId = round.id,
+                RoundId = round.Id,
                 FirstSongId = id1,
                 SecondSongId = id2,
                 Order = order++
@@ -152,13 +154,14 @@ public class MatchRepository : BaseRepository, IMatchRepository
         using var connection = CreateConnection();
         const string sql = """
             SELECT
-                id,
-                round_id,
-                song1_id,
-                song2_id,
-                winner_song_id,
-                match_order,
-                is_active
+                id as Id,
+                round_id as RoundId,
+                song1_id as FirstSongId,
+                song2_id as SecondSongId,
+                winner_song_id as WinnerSongId,
+                match_order as "Order",
+                is_active as IsActive,
+                created_at as CreatedDate
             FROM matches
             WHERE id = @MatchId
             """;

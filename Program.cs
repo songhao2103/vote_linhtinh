@@ -1,6 +1,8 @@
 
 
 using VoteLinhTinh.Models;
+using VoteLinhTinh.Repositories;
+using VoteLinhTinh.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,27 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddScoped<ISongRepository, SongRepository>();
+builder.Services.AddScoped<IMatchRepository, MatchRepository>();
+builder.Services.AddScoped<IRoundRepository, RoundRepository>();
+builder.Services.AddHttpClient<ISongService, SongService>();
+builder.Services.AddScoped<IRoundService, RoundService>();
+builder.Services.AddScoped<IMatchService, MatchService>();
+
+
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 
 var app = builder.Build();
 
@@ -25,8 +48,9 @@ using (var scope = app.Services.CreateScope())
     await initializer.InitializeAsync();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
+app.UseCors("AllowFrontend");
 app.UseAuthorization();
 
 app.MapControllers();

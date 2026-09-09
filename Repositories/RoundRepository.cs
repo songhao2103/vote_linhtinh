@@ -19,9 +19,10 @@ public class RoundRepository : BaseRepository, IRoundRepository
                 name as Name,
                 total_matches as TotalMatches,
                 is_active as IsActive,
-                created_at as CreatedAt
+                created_at as CreatedDate
             FROM rounds
             WHERE is_active = true
+            LIMIT 1
             """;
         var round = await connection.QueryFirstOrDefaultAsync<Round>(sql);
 
@@ -50,22 +51,24 @@ public class RoundRepository : BaseRepository, IRoundRepository
 
         const string createRoundSql = """
             INSERT INTO rounds (name, total_matches, is_active, created_at)
-            VALUES (@Name, @TotalMatches, TRUE, NOW())
+            VALUES (@Name, @TotalMatches, @IsActive, @CreatedDate)
             """;
 
         var rounds = new List<Round>();
         var matchCount = totalMatches;
 
-        while(matchCount < 2)
+        while(matchCount >= 1)
         {
             var round = new Round
             {
-                Name = $"Vòng 1:{matchCount}",
+                Name = $"Vòng {matchCount}",
                 TotalMatches = matchCount,
-                IsActive = matchCount == totalMatches
+                IsActive = matchCount == totalMatches,
+                CreatedDate = DateTime.UtcNow
             };
 
             rounds.Add(round);
+            if (matchCount == 1) break;
             matchCount = matchCount / 2;
         }
 

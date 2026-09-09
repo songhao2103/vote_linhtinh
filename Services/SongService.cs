@@ -8,8 +8,8 @@ public class SongService : ISongService
 {
     private readonly ISongRepository _songRepository;
     private readonly HttpClient _httpClient;
-    private readonly string _externalApiUrl1 = "https://api.example.com/songs";
-    private readonly string _externalApiUrl2 = "https://api.example.com/other-songs";
+    private readonly string _externalApiUrl1 = "https://api.uwufufu.com/v1/selections?page=1&perPage=1000&worldcupId=170440";
+    private readonly string _externalApiUrl2 = "https://api.uwufufu.com/v1/selections?page=1&perPage=1000&worldcupId=168808";
 
     public SongService(ISongRepository songRepository, HttpClient httpClient)
     {
@@ -28,36 +28,61 @@ public class SongService : ISongService
     }
     public async Task<int> UpsertSongsAsync()
     {
-        List<ExternalSongDTO> externalSongs1 = new List<ExternalSongDTO>();
-        List<ExternalSongDTO> externalSongs2 = new List<ExternalSongDTO>();
+        List<ExternalSongDTO> externalSongs1 = [];
+        List<ExternalSongDTO> externalSongs2 = [];
+
         try
         {
-            var externalSongs1Response = await _httpClient.GetAsync(_externalApiUrl1);
-            externalSongs1 = await externalSongs1Response.Content.ReadFromJsonAsync<List<ExternalSongDTO>>() ?? new List<ExternalSongDTO>();
+            var response = await _httpClient.GetAsync(_externalApiUrl1);
+
+            var result = await response.Content
+                .ReadFromJsonAsync<ExternalSongResponse>();
+
+            externalSongs1 = result?.Data ?? [];
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Có lỗi khi gọi API lấy danh sách nhạc 1 : {ex.Message}");
+            Console.WriteLine(
+                $"Có lỗi khi gọi API lấy danh sách nhạc 1: {ex.Message}"
+            );
         }
 
         try
         {
-            var externalSongs2Response = await _httpClient.GetAsync(_externalApiUrl2);
-            externalSongs2 = await externalSongs2Response.Content.ReadFromJsonAsync<List<ExternalSongDTO>>() ?? new List<ExternalSongDTO>();
+            var response = await _httpClient.GetAsync(_externalApiUrl2);
+
+            var result = await response.Content
+                .ReadFromJsonAsync<ExternalSongResponse>();
+
+            externalSongs2 = result?.Data ?? [];
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Có lỗi khi gọi API lấy danh sách nhạc 2 : {ex.Message}");
+            Console.WriteLine(
+                $"Có lỗi khi gọi API lấy danh sách nhạc 2: {ex.Message}"
+            );
         }
 
-        var songs = externalSongs1.Concat(externalSongs2).Select(dto => new Song
-        {
-            Name = dto.Name,
-            VideoUrl = dto.VideoUrl,
-            ResourceUrl = dto.ResourceUrl,
-            IsActive = true,
-            CreatedDate = DateTime.UtcNow
-        }).ToList();
+        var songs = externalSongs1
+            .Concat(externalSongs2)
+            .Where(dto =>
+                !string.IsNullOrWhiteSpace(dto.Name) &&
+                !string.IsNullOrWhiteSpace(dto.VideoUrl)
+            )
+            .Select(dto => new Song
+            {
+                Name = dto.Name!,
+                VideoUrl = dto.VideoUrl!,
+                ResourceUrl = dto.ResourceUrl,
+                IsActive = true,
+                CreatedDate = DateTime.UtcNow
+            })
+            .DistinctBy(x => new
+            {
+                x.Name,
+                x.VideoUrl
+            })
+            .ToList();
 
         return await _songRepository.UpsertSongsAsync(songs);
     }

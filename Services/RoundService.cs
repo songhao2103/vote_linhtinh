@@ -15,4 +15,9 @@ public class RoundService : IRoundService
     {
         return _roundRepository.CreateRoundAsync(totalMatches);
     }
+    
+    public Task<Models.Round> GetRoundActiveAsync()
+    {
+        return _roundRepository.GetRoundActiveAsync();
+    }
 }
