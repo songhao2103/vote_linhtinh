@@ -127,14 +127,41 @@ public class MatchRepository : BaseRepository, IMatchRepository
         await connection.ExecuteAsync(insertMatchSql, matches);
     }
 
-    public async Task ComplưtedMatchAsync(int matchId, int winnerSongId)
+    public async Task<bool> CompletedMatchAsync(int matchId, int winnerSongId)
     {
         using var connection = CreateConnection();
-        const string sql = """
+        try
+        {
+            const string sql = """
             UPDATE matches
             SET winner_song_id = @WinnerSongId
             WHERE id = @MatchId
             """;
-        await connection.ExecuteAsync(sql, new { MatchId = matchId, WinnerSongId = winnerSongId });
+            await connection.ExecuteAsync(sql, new { MatchId = matchId, WinnerSongId = winnerSongId });
+            return true;
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("Có lỗi khi hoàn thành Match: " + ex.Message);
+            return false;
+        }
+    }
+
+    public async Task<Match?> GetMatchByIdAsync(int matchId)
+    {
+        using var connection = CreateConnection();
+        const string sql = """
+            SELECT
+                id,
+                round_id,
+                song1_id,
+                song2_id,
+                winner_song_id,
+                match_order,
+                is_active
+            FROM matches
+            WHERE id = @MatchId
+            """;
+        return await connection.QueryFirstOrDefaultAsync<Match>(sql, new { MatchId = matchId });
     }
 }

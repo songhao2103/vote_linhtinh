@@ -82,4 +82,19 @@ public class RoundRepository : BaseRepository, IRoundRepository
             """;
         await connection.ExecuteAsync(sql, new { RoundId = roundId });
     }
+
+    public async Task<List<Round>> GetAllRoundsAsync()
+    {
+        using var connection = CreateConnection();
+        const string sql = """
+            SELECT
+                id as Id,
+                name as Name,
+                total_matches as TotalMatches,
+                is_active as IsActive,
+                created_at as CreatedAt
+            FROM rounds
+            """;
+        return (await connection.QueryAsync<Round>(sql)).ToList();
+    }
 }
